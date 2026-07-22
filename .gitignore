@@ -1,0 +1,4 @@
+.env
+note_ctej-ocr.txt
+__pycache__/
+.pytest_cache/

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CTEJ 検品 OCR システム</title>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+
+  <!-- Background decorative glows -->
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo">CTEJ <span class="accent-text">OCR SCAN</span></div>
+      <div class="connection-badge">
+        <span class="status-dot"></span>
+        <span class="status-text">AI OCR ONLINE</span>
+      </div>
+    </header>
+
+    <!-- Step Wizard Tracker -->
+    <div class="steps-tracker">
+      <div class="step-indicator active" id="step-tab-1">
+        <div class="step-num">1</div>
+        <div class="step-label">指示書読込</div>
+      </div>
+      <div class="step-line" id="step-line-1"></div>
+      <div class="step-indicator" id="step-tab-2">
+        <div class="step-num">2</div>
+        <div class="step-label">現物検品</div>
+      </div>
+      <div class="step-line" id="step-line-2"></div>
+      <div class="step-indicator" id="step-tab-3">
+        <div class="step-num">3</div>
+        <div class="step-label">CSV出力</div>
+      </div>
+    </div>
+
+    <!-- MAIN PANELS -->
+
+    <!-- STEP 1: INSTRUCTION SCAN PANEL -->
+    <section class="panel active" id="panel-step-1">
+      <div class="glass-card">
+        <h2 class="section-title">指示書または出荷案内書の読込</h2>
+        <p class="section-desc">手書きの指示書（商品生産・仕上げ依頼書）または印刷された出荷案内書をカメラでスキャンしてください。</p>
+
+        <!-- Scan Type Selectors -->
+        <div class="scan-type-grid">
+          <label class="scan-type-card active" for="scan-type-handwritten">
+            <input type="radio" name="instruction_type" id="scan-type-handwritten" value="handwritten" checked class="hidden-radio">
+            <div class="card-icon">✍️</div>
+            <div class="card-title">手書き指示書</div>
+            <div class="card-sub">商品生産・仕上げ依頼書</div>
+          </label>
+          <label class="scan-type-card" for="scan-type-printed">
+            <input type="radio" name="instruction_type" id="scan-type-printed" value="printed" class="hidden-radio">
+            <div class="card-icon">📄</div>
+            <div class="card-title">出荷案内書</div>
+            <div class="card-sub">印刷された控え</div>
+          </label>
+        </div>
+
+        <!-- Camera scan trigger -->
+        <div class="camera-trigger-area">
+          <button class="btn btn-primary btn-scan" id="btn-trigger-instruction-camera">
+            <span class="btn-icon">📸</span> 指示書をスキャン
+          </button>
+          <!-- Hidden inputs for cameras -->
+          <input type="file" accept="image/*" capture="environment" id="input-instruction-file" class="hidden-file-input">
+        </div>
+      </div>
+
+      <!-- Scanned expected items list -->
+      <div class="glass-card hidden" id="expected-items-container">
+        <div class="card-header-flex">
+          <h3 class="card-title-sm">検出された指示データ（期待値）</h3>
+          <button class="btn btn-sm btn-outline" id="btn-add-expected-row">+ 行追加</button>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="item-table" id="table-expected-items">
+            <thead>
+              <tr>
+                <th>商品名 / 品番</th>
+                <th width="100">数量</th>
+                <th width="60">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="action-footer">
+          <button class="btn btn-success w-full" id="btn-confirm-expected">
+            上記内容で確定して現物検品へ ➔
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2: CARDBOARD INSPECTION PANEL -->
+    <section class="panel" id="panel-step-2">
+      <!-- Expected checklist progress -->
+      <div class="glass-card">
+        <h2 class="section-title">段ボールスキャン ＆ 照合</h2>
+        <p class="section-desc">届いた段ボールのラベルを1箱ずつスキャンしてください。自動的にマーカー領域を検知し、指示書データとリアルタイムで照合します。</p>
+
+        <!-- Progress Overview -->
+        <div class="progress-container" id="checklist-progress-container">
+          <!-- Dynamically populated progress list -->
+        </div>
+
+        <!-- Camera scan or Barcode scan cardboard -->
+        <div class="camera-trigger-area" style="display: flex; flex-direction: column; gap: 15px;">
+          <button class="btn btn-primary btn-scan" id="btn-trigger-cardboard-camera">
+            <span class="btn-icon">📸</span> カメラで段ボールOCRスキャン
+          </button>
+          <input type="file" accept="image/*" capture="environment" id="input-cardboard-file" class="hidden-file-input">
+          
+          <div style="text-align: center; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); position: relative;">
+            <span>または</span>
+          </div>
+
+          <div class="barcode-input-group" style="display: flex; gap: 10px; width: 100%;">
+            <input type="text" id="input-barcode-scanner" class="form-control" placeholder="バーコード・品番を手入力" style="flex: 2; min-width: 0;">
+            <input type="number" id="input-barcode-qty" class="form-control" placeholder="数量" value="1" min="1" style="flex: 1; min-width: 0; max-width: 80px; padding: 12px 10px; text-align: center;">
+            <button class="btn btn-outline" id="btn-add-barcode" style="width: auto; white-space: nowrap; padding: 12px 20px;">追加</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanned cardboard list -->
+      <div class="glass-card" id="scanned-cardboards-container">
+        <h3 class="card-title-sm">スキャン済みの段ボール実績</h3>
+        <div class="scanned-cards-list" id="scanned-boxes-list">
+          <div class="empty-state">段ボールがスキャンされていません。カメラで読み取ってください。</div>
+        </div>
+      </div>
+
+      <!-- Matching Status Panel -->
+      <div class="matching-status-bar glass-card ng-status" id="matching-status-panel">
+        <div class="status-flex">
+          <div class="status-info">
+            <div class="status-title-large" id="status-title">検品中...</div>
+            <div class="status-detail" id="status-desc">現物のスキャンを続けてください。</div>
+          </div>
+          <div class="status-indicator-icon" id="status-badge-icon">⏳</div>
+        </div>
+        <button class="btn btn-success w-full mt-4 hidden" id="btn-proceed-to-export">
+          検品完了・CSV出力へ進む
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 3: EXPORT PANEL -->
+    <section class="panel" id="panel-step-3">
+      <div class="glass-card text-center">
+        <div class="success-trophy">🏆</div>
+        <h2 class="section-title">検品完了 ＆ データ出力</h2>
+        <p class="section-desc">検品データが正常に照合されました。「商い奉行」に取り込むためのCSVファイルをダウンロードできます。</p>
+
+        <!-- Customer Code Entry -->
+        <div class="form-group text-left">
+          <label for="customer-code-input" class="form-label">得意先コード（商い奉行連携用）</label>
+          <input type="text" id="customer-code-input" class="form-control" value="9999" placeholder="得意先コードを入力">
+        </div>
+
+        <button class="btn btn-success w-full py-4 mt-6 btn-large" id="btn-export-csv">
+          📥 商い奉行用CSVをダウンロード
+        </button>
+
+        <button class="btn btn-outline w-full mt-4" id="btn-reset-app">
+          🔄 新しい検品を開始する
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Full Screen Success Overlay -->
+  <div class="success-overlay" id="success-overlay">
+    <div class="overlay-content">
+      <div class="celebration-circle">
+        <div class="checkmark-icon">✓</div>
+      </div>
+      <h1 class="overlay-title">検品完了！</h1>
+      <p class="overlay-desc">すべての商品名、数量が指示書と完全に一致しました。</p>
+      <button class="btn btn-success mt-8" id="btn-overlay-close">CSV出力へ進む</button>
+    </div>
+  </div>
+
+  <!-- Loading Backdrop -->
+  <div class="loading-backdrop" id="loading-backdrop">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <div class="loading-message" id="loading-text">AIが指示書を解析中...</div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/app.js"></script>
+</body>
+</html>
