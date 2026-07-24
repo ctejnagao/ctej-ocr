@@ -332,7 +332,19 @@ const startBarcodeScanner = () => {
     html5QrCode = new Html5Qrcode("barcode-reader");
   }
   
-  const config = { fps: 10, qrbox: { width: 250, height: 100 } };
+  const config = { 
+    fps: 10, 
+    qrbox: { width: 300, height: 150 },
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.ITF
+    ]
+  };
   
   html5QrCode.start(
     { facingMode: "environment" }, 
@@ -358,6 +370,7 @@ const stopBarcodeScanner = () => {
   const container = document.getElementById("barcode-scanner-container");
   if (html5QrCode && html5QrCode.isScanning) {
     html5QrCode.stop().then(() => {
+      html5QrCode.clear();
       container.style.display = "none";
     }).catch(err => {
       console.error("Stop failed", err);
