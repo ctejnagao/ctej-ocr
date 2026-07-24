@@ -138,10 +138,9 @@ def encode_cv2_image_to_base64(img: np.ndarray) -> str:
     _, buffer = cv2.imencode('.jpg', img)
     return base64.b64encode(buffer).decode('utf-8')
 
-def parse_cardboard_multimodal(full_image_b64: str, green_crop_b64: str = None, red_crop_b64: str = None) -> list[dict]:
+def parse_cardboard_multimodal(full_image_b64: str) -> list[dict]:
     """
-    Send full image and cropped highlight slices to OpenAI Vision API in a single request.
-    This provides both broader context and high-res close-ups of highlights for 100% accurate OCR.
+    Send full image to OpenAI Vision API.
     """
     try:
         content = [
@@ -149,11 +148,8 @@ def parse_cardboard_multimodal(full_image_b64: str, green_crop_b64: str = None, 
                 "type": "text",
                 "text": (
                     "You are an expert warehouse inspection OCR tool.\n"
-                    "Analyze the provided images of a cardboard box label to extract the item code (品番) and quantity (数量) "
+                    "Analyze the provided image of a cardboard box label to extract the item code (品番) and quantity (数量) "
                     "that are highlighted by a colored marker (green or red/pink).\n\n"
-                    "Image 1 is the full label on the cardboard box.\n"
-                    "Image 2 (if present) is a zoomed-in cropped row corresponding to a green marker candidate.\n"
-                    "Image 3 (if present) is a zoomed-in cropped row corresponding to a red/pink marker candidate.\n\n"
                     "Please read the highlighted text carefully. If there is a green marker highlight, the highlighted item code "
                     "and its corresponding quantity should be returned with color 'green'.\n"
                     "If there is a red/pink marker highlight, return it with color 'red'.\n"
@@ -173,27 +169,12 @@ def parse_cardboard_multimodal(full_image_b64: str, green_crop_b64: str = None, 
             {
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:image/jpeg;base64,{full_image_b64}"
+                    "url": f"data:image/jpeg;base64,{full_image_b64}",
+                    "detail": "low"
                 }
             }
         ]
         
-        if green_crop_b64:
-            content.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{green_crop_b64}"
-                }
-            })
-            
-        if red_crop_b64:
-            content.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{red_crop_b64}"
-                }
-            })
-            
         response = get_openai_client().chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -244,20 +225,8 @@ def scan_cardboard_image(img_path: str, original_filename: str = None) -> list[d
         _, buffer = cv2.imencode('.jpg', img)
         full_b64 = base64.b64encode(buffer).decode('utf-8')
         
-        green_crop_b64 = None
-        if marker_ranges.get("green"):
-            y_min, y_max = marker_ranges["green"][0]
-            cropped = crop_horizontal_strip(img, y_min, y_max)
-            green_crop_b64 = encode_cv2_image_to_base64(cropped)
-            
-        red_crop_b64 = None
-        if marker_ranges.get("red"):
-            y_min, y_max = marker_ranges["red"][0]
-            cropped = crop_horizontal_strip(img, y_min, y_max)
-            red_crop_b64 = encode_cv2_image_to_base64(cropped)
-            
-        # Query OpenAI Vision API with both full context and cropped regions
-        items = parse_cardboard_multimodal(full_b64, green_crop_b64, red_crop_b64)
+        # Query OpenAI Vision API with full context
+        items = parse_cardboard_multimodal(full_b64)
         if not items:
             raise ValueError("Vision API returned empty results")
             
@@ -330,7 +299,8 @@ def scan_instruction_image(img_path: str, original_filename: str = None) -> list
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{b64}"
+                                "url": f"data:image/jpeg;base64,{b64}",
+                                "detail": "low"
                             }
                         }
                     ]
@@ -392,7 +362,8 @@ def scan_shipping_notice_image(img_path: str, original_filename: str = None) -> 
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{b64}"
+                                "url": f"data:image/jpeg;base64,{b64}",
+                                "detail": "low"
                             }
                         }
                     ]

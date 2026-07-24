@@ -80,7 +80,7 @@ const hideLoading = () => {
   document.getElementById("loading-backdrop").classList.remove("active");
 };
 
-// Compress image utility (Max long side 1200px)
+// Compress image utility (Max long side 800px)
 const compressImage = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -88,7 +88,7 @@ const compressImage = (file) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const max_size = 1200;
+        const max_size = 800;
         let width = img.width;
         let height = img.height;
         
