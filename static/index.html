@@ -68,12 +68,21 @@
         </div>
 
         <!-- Camera scan trigger -->
-        <div class="camera-trigger-area">
-          <button class="btn btn-primary btn-scan" id="btn-trigger-instruction-camera">
-            <span class="btn-icon">📸</span> 指示書をスキャン
+        <div class="camera-trigger-area" id="instruction-camera-area">
+          <button class="btn btn-primary btn-scan" id="btn-start-instruction-camera">
+            <span class="btn-icon">📸</span> カメラで指示書をスキャン
           </button>
-          <!-- Hidden inputs for cameras -->
-          <input type="file" accept="image/*" capture="environment" id="input-instruction-file" class="hidden-file-input">
+          
+          <div id="instruction-preview-container" class="camera-preview-container" style="display: none; position: relative; width: 100%; border-radius: 8px; overflow: hidden; background: #000; margin-top: 15px;">
+            <video id="video-instruction" style="width: 100%; height: auto; display: block;" autoplay playsinline></video>
+            <div style="position: absolute; top: 10%; left: 5%; width: 90%; height: 80%; border: 2px dashed rgba(255,255,255,0.7); box-sizing: border-box; pointer-events: none;"></div>
+            <div style="position: absolute; bottom: 15px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10;">
+              <button class="btn btn-success" id="btn-capture-instruction" style="padding: 10px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">撮影して解析</button>
+              <button class="btn btn-outline" id="btn-close-instruction-camera" style="padding: 10px 20px; background: rgba(0,0,0,0.5); color: white;">閉じる</button>
+            </div>
+          </div>
+          
+          <canvas id="canvas-instruction" style="display: none;"></canvas>
         </div>
       </div>
 
@@ -121,10 +130,19 @@
 
         <!-- Camera scan or Barcode scan cardboard -->
         <div class="camera-trigger-area" style="display: flex; flex-direction: column; gap: 15px;">
-          <button class="btn btn-primary btn-scan" id="btn-trigger-cardboard-camera">
+          <button class="btn btn-primary btn-scan" id="btn-start-cardboard-camera">
             <span class="btn-icon">📸</span> カメラで段ボールOCRスキャン
           </button>
-          <input type="file" accept="image/*" capture="environment" id="input-cardboard-file" class="hidden-file-input">
+          
+          <div id="cardboard-preview-container" class="camera-preview-container" style="display: none; position: relative; width: 100%; border-radius: 8px; overflow: hidden; background: #000;">
+            <video id="video-cardboard" style="width: 100%; height: auto; display: block;" autoplay playsinline></video>
+            <div style="position: absolute; top: 20%; left: 10%; width: 80%; height: 60%; border: 2px dashed rgba(255,255,255,0.7); box-sizing: border-box; pointer-events: none;"></div>
+            <div style="position: absolute; bottom: 15px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10;">
+              <button class="btn btn-success" id="btn-capture-cardboard" style="padding: 10px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">撮影して解析</button>
+              <button class="btn btn-outline" id="btn-close-cardboard-camera" style="padding: 10px 20px; background: rgba(0,0,0,0.5); color: white;">閉じる</button>
+            </div>
+          </div>
+          <canvas id="canvas-cardboard" style="display: none;"></canvas>
           
           <div style="text-align: center; font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); position: relative;">
             <span>または</span>

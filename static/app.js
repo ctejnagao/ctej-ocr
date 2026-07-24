@@ -155,6 +155,60 @@ const setStep = (step) => {
 };
 
 // ----------------------------------------
+// WEBRTC CAMERA MANAGER
+// ----------------------------------------
+const CameraManager = {
+  stream: null,
+  videoEl: null,
+  
+  async start(videoId) {
+    this.videoEl = document.getElementById(videoId);
+    if (!this.videoEl) return;
+    
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false
+      });
+      this.videoEl.srcObject = this.stream;
+    } catch (err) {
+      console.error("Camera access error:", err);
+      alert("カメラへのアクセスが拒否されたか、デバイスが見つかりません。");
+    }
+  },
+  
+  stop() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = null;
+    }
+    if (this.videoEl) {
+      this.videoEl.srcObject = null;
+      this.videoEl = null;
+    }
+  },
+  
+  capture(canvasId) {
+    if (!this.videoEl || !this.stream) return null;
+    
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    
+    canvas.width = this.videoEl.videoWidth;
+    canvas.height = this.videoEl.videoHeight;
+    
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(this.videoEl, 0, 0, canvas.width, canvas.height);
+    
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, "image/jpeg", 0.95);
+    });
+  }
+};
+
+// ----------------------------------------
 // STEP 1: INSTRUCTION SCANNERS
 // ----------------------------------------
 
@@ -183,21 +237,29 @@ const addExpectedRow = (itemName = "", quantity = 1) => {
   tbody.appendChild(tr);
 };
 
-// Scan Button Trigger
-document.getElementById("btn-trigger-instruction-camera").addEventListener("click", () => {
-  document.getElementById("input-instruction-file").click();
+// Instruction Camera Handlers
+document.getElementById("btn-start-instruction-camera").addEventListener("click", async () => {
+  document.getElementById("instruction-preview-container").style.display = "block";
+  await CameraManager.start("video-instruction");
 });
 
-// File Upload Handler for Instructions
-document.getElementById("input-instruction-file").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+document.getElementById("btn-close-instruction-camera").addEventListener("click", () => {
+  CameraManager.stop();
+  document.getElementById("instruction-preview-container").style.display = "none";
+});
+
+document.getElementById("btn-capture-instruction").addEventListener("click", async () => {
+  const blob = await CameraManager.capture("canvas-instruction");
+  if (!blob) return;
+  
+  CameraManager.stop();
+  document.getElementById("instruction-preview-container").style.display = "none";
   
   showLoading("画像を最適化中...");
   try {
-    const compressedBlob = await compressImage(file);
+    const compressedBlob = await compressImage(blob);
     const formData = new FormData();
-    formData.append("file", compressedBlob, file.name);
+    formData.append("file", compressedBlob, "instruction_scan.jpg");
     
     const scanType = document.querySelector('input[name="instruction_type"]:checked').value;
     const endpoint = scanType === "handwritten" ? "/api/scan/instruction" : "/api/scan/shipping-notice";
@@ -211,7 +273,6 @@ document.getElementById("input-instruction-file").addEventListener("change", asy
     if (!res.ok) throw new Error("Scanned API returned error status");
     const data = await res.json();
     
-    // Clear and populate expected items table
     const tbody = document.querySelector("#table-expected-items tbody");
     tbody.innerHTML = "";
     
@@ -232,7 +293,6 @@ document.getElementById("input-instruction-file").addEventListener("change", asy
     playErrorBuzz();
   } finally {
     hideLoading();
-    e.target.value = ""; // Clear file
   }
 });
 
@@ -271,21 +331,29 @@ document.getElementById("btn-confirm-expected").addEventListener("click", () => 
 // STEP 2: PHYSICAL INSPECTION CARDBOARD
 // ----------------------------------------
 
-// Scan Cardboard Trigger
-document.getElementById("btn-trigger-cardboard-camera").addEventListener("click", () => {
-  document.getElementById("input-cardboard-file").click();
+// Cardboard Camera Handlers
+document.getElementById("btn-start-cardboard-camera").addEventListener("click", async () => {
+  document.getElementById("cardboard-preview-container").style.display = "block";
+  await CameraManager.start("video-cardboard");
 });
 
-// File Upload Handler for Cardboard labels
-document.getElementById("input-cardboard-file").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+document.getElementById("btn-close-cardboard-camera").addEventListener("click", () => {
+  CameraManager.stop();
+  document.getElementById("cardboard-preview-container").style.display = "none";
+});
+
+document.getElementById("btn-capture-cardboard").addEventListener("click", async () => {
+  const blob = await CameraManager.capture("canvas-cardboard");
+  if (!blob) return;
+  
+  CameraManager.stop();
+  document.getElementById("cardboard-preview-container").style.display = "none";
   
   showLoading("画像を圧縮中...");
   try {
-    const compressedBlob = await compressImage(file);
+    const compressedBlob = await compressImage(blob);
     const formData = new FormData();
-    formData.append("file", compressedBlob, file.name);
+    formData.append("file", compressedBlob, "cardboard_scan.jpg");
     
     showLoading("マーカー領域を検出 ＆ OCR処理中...");
     const res = await fetch("/api/scan/cardboard", {
@@ -317,7 +385,6 @@ document.getElementById("input-cardboard-file").addEventListener("change", async
     playErrorBuzz();
   } finally {
     hideLoading();
-    e.target.value = "";
   }
 });
 
