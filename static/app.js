@@ -155,60 +155,6 @@ const setStep = (step) => {
 };
 
 // ----------------------------------------
-// WEBRTC CAMERA MANAGER
-// ----------------------------------------
-const CameraManager = {
-  stream: null,
-  videoEl: null,
-  
-  async start(videoId) {
-    this.videoEl = document.getElementById(videoId);
-    if (!this.videoEl) return;
-    
-    try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false
-      });
-      this.videoEl.srcObject = this.stream;
-    } catch (err) {
-      console.error("Camera access error:", err);
-      alert("カメラへのアクセスが拒否されたか、デバイスが見つかりません。");
-    }
-  },
-  
-  stop() {
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop());
-      this.stream = null;
-    }
-    if (this.videoEl) {
-      this.videoEl.srcObject = null;
-      this.videoEl = null;
-    }
-  },
-  
-  capture(canvasId) {
-    if (!this.videoEl || !this.stream) return null;
-    
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return null;
-    
-    canvas.width = this.videoEl.videoWidth;
-    canvas.height = this.videoEl.videoHeight;
-    
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(this.videoEl, 0, 0, canvas.width, canvas.height);
-    
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, "image/jpeg", 0.95);
-    });
-  }
-};
-
-// ----------------------------------------
 // STEP 1: INSTRUCTION SCANNERS
 // ----------------------------------------
 
@@ -237,29 +183,21 @@ const addExpectedRow = (itemName = "", quantity = 1) => {
   tbody.appendChild(tr);
 };
 
-// Instruction Camera Handlers
-document.getElementById("btn-start-instruction-camera").addEventListener("click", async () => {
-  document.getElementById("instruction-preview-container").style.display = "block";
-  await CameraManager.start("video-instruction");
+// Scan Button Trigger
+document.getElementById("btn-trigger-instruction-camera").addEventListener("click", () => {
+  document.getElementById("input-instruction-file").click();
 });
 
-document.getElementById("btn-close-instruction-camera").addEventListener("click", () => {
-  CameraManager.stop();
-  document.getElementById("instruction-preview-container").style.display = "none";
-});
-
-document.getElementById("btn-capture-instruction").addEventListener("click", async () => {
-  const blob = await CameraManager.capture("canvas-instruction");
-  if (!blob) return;
-  
-  CameraManager.stop();
-  document.getElementById("instruction-preview-container").style.display = "none";
+// File Upload Handler for Instructions
+document.getElementById("input-instruction-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
   
   showLoading("画像を最適化中...");
   try {
-    const compressedBlob = await compressImage(blob);
+    const compressedBlob = await compressImage(file);
     const formData = new FormData();
-    formData.append("file", compressedBlob, "instruction_scan.jpg");
+    formData.append("file", compressedBlob, file.name);
     
     const scanType = document.querySelector('input[name="instruction_type"]:checked').value;
     const endpoint = scanType === "handwritten" ? "/api/scan/instruction" : "/api/scan/shipping-notice";
@@ -273,6 +211,7 @@ document.getElementById("btn-capture-instruction").addEventListener("click", asy
     if (!res.ok) throw new Error("Scanned API returned error status");
     const data = await res.json();
     
+    // Clear and populate expected items table
     const tbody = document.querySelector("#table-expected-items tbody");
     tbody.innerHTML = "";
     
@@ -293,6 +232,7 @@ document.getElementById("btn-capture-instruction").addEventListener("click", asy
     playErrorBuzz();
   } finally {
     hideLoading();
+    e.target.value = ""; // Clear file
   }
 });
 
@@ -331,29 +271,21 @@ document.getElementById("btn-confirm-expected").addEventListener("click", () => 
 // STEP 2: PHYSICAL INSPECTION CARDBOARD
 // ----------------------------------------
 
-// Cardboard Camera Handlers
-document.getElementById("btn-start-cardboard-camera").addEventListener("click", async () => {
-  document.getElementById("cardboard-preview-container").style.display = "block";
-  await CameraManager.start("video-cardboard");
+// Scan Cardboard Trigger
+document.getElementById("btn-trigger-cardboard-camera").addEventListener("click", () => {
+  document.getElementById("input-cardboard-file").click();
 });
 
-document.getElementById("btn-close-cardboard-camera").addEventListener("click", () => {
-  CameraManager.stop();
-  document.getElementById("cardboard-preview-container").style.display = "none";
-});
-
-document.getElementById("btn-capture-cardboard").addEventListener("click", async () => {
-  const blob = await CameraManager.capture("canvas-cardboard");
-  if (!blob) return;
-  
-  CameraManager.stop();
-  document.getElementById("cardboard-preview-container").style.display = "none";
+// File Upload Handler for Cardboard labels
+document.getElementById("input-cardboard-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
   
   showLoading("画像を圧縮中...");
   try {
-    const compressedBlob = await compressImage(blob);
+    const compressedBlob = await compressImage(file);
     const formData = new FormData();
-    formData.append("file", compressedBlob, "cardboard_scan.jpg");
+    formData.append("file", compressedBlob, file.name);
     
     showLoading("マーカー領域を検出 ＆ OCR処理中...");
     const res = await fetch("/api/scan/cardboard", {
@@ -385,71 +317,37 @@ document.getElementById("btn-capture-cardboard").addEventListener("click", async
     playErrorBuzz();
   } finally {
     hideLoading();
+    e.target.value = "";
   }
 });
 
-// Barcode Camera Scanner logic
-let html5QrCode = null;
-
-const startBarcodeScanner = () => {
-  const container = document.getElementById("barcode-scanner-container");
-  container.style.display = "block";
+// Barcode Scan File Handler
+document.getElementById("btn-trigger-barcode-camera").addEventListener("click", () => {
+  document.getElementById("input-barcode-file").click();
+});
+document.getElementById("input-barcode-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
   
-  if (!html5QrCode) {
-    html5QrCode = new Html5Qrcode("barcode-reader");
-  }
-  
-  const config = { 
-    fps: 10, 
-    qrbox: { width: 300, height: 150 },
-    formatsToSupport: [
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.ITF
-    ]
-  };
-  
-  html5QrCode.start(
-    { facingMode: "environment" }, 
-    config,
-    (decodedText, decodedResult) => {
-      // on success
-      stopBarcodeScanner();
-      const inputEl = document.getElementById("input-barcode-scanner");
-      inputEl.value = decodedText;
-      handleBarcodeScan();
-    },
-    (errorMessage) => {
-      // parse error, ignore
-    }
-  ).catch((err) => {
-    console.error("Camera start error", err);
-    alert("カメラの起動に失敗しました。権限を確認してください。");
-    container.style.display = "none";
-  });
-};
-
-const stopBarcodeScanner = () => {
-  const container = document.getElementById("barcode-scanner-container");
-  if (html5QrCode && html5QrCode.isScanning) {
-    html5QrCode.stop().then(() => {
+  showLoading("バーコードを読み取り中...");
+  try {
+    const html5QrCode = new Html5Qrcode("barcode-reader");
+    const decodedText = await html5QrCode.scanFileV2(file, true);
+    
+    if (decodedText && decodedText.decodedText) {
+      document.getElementById("input-barcode-scanner").value = decodedText.decodedText;
       html5QrCode.clear();
-      container.style.display = "none";
-    }).catch(err => {
-      console.error("Stop failed", err);
-      container.style.display = "none";
-    });
-  } else {
-    container.style.display = "none";
+      handleBarcodeScan();
+    } else {
+      throw new Error("Barcode text not found");
+    }
+  } catch (err) {
+    console.error("Barcode read error", err);
+    alert("バーコードを読み取れませんでした。もう一度撮影するか、手入力してください。");
+  } finally {
+    hideLoading();
+    e.target.value = "";
   }
-};
-
-document.getElementById("btn-close-barcode-scanner").addEventListener("click", () => {
-  stopBarcodeScanner();
 });
 
 // Barcode Scanning / Manual Entry Handler
@@ -510,10 +408,6 @@ document.getElementById("input-barcode-scanner").addEventListener("keydown", (e)
     handleBarcodeScan();
   }
 });
-document.getElementById("input-barcode-scanner").addEventListener("focus", () => {
-  startBarcodeScanner();
-});
-
 // Render scanned box cards
 const renderScannedBoxes = () => {
   const container = document.getElementById("scanned-boxes-list");
