@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+import tempfile
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,7 +28,12 @@ from app.ocr_engine import scan_instruction_image, scan_shipping_notice_image, s
 from app.matcher import smart_match
 from app.csv_generator import generate_akinai_csv
 
-app = FastAPI(title="CTEJ OCR Inspection System")
+# FastAPI インスタンスの作成 (docs_url を明示指定)
+app = FastAPI(
+    title="CTEJ OCR Inspection System",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
 # Enable CORS for local testing if needed
 app.add_middleware(
@@ -37,8 +43,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-import tempfile
 
 def save_uploaded_file(upload_file: UploadFile) -> str:
     """Save an uploaded file to a temporary location and return its path."""
@@ -53,6 +57,18 @@ def save_uploaded_file(upload_file: UploadFile) -> str:
         shutil.copyfileobj(upload_file.file, buffer)
         
     return temp_path
+
+@app.get("/")
+async def get_index():
+    """Serve the index page at the root URL if exists, else return API status."""
+    index_path = os.path.join("static", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {
+        "status": "ok",
+        "message": "CTEJ OCR Backend is running successfully!",
+        "docs": "/docs"
+    }
 
 @app.post("/api/scan/instruction")
 async def api_scan_instruction(file: UploadFile = File(...)):
@@ -163,16 +179,6 @@ async def register_shipment(req: ShipmentRequest):
     })
     return {"status": "success", "message": "出荷数を登録しました"}
 
-# Ensure static folder exists
+# Ensure static folder exists and mount it
 os.makedirs("static", exist_ok=True)
-
-# Mount static files folder
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/")
-async def get_index():
-    """Serve the index page at the root URL."""
-    index_path = os.path.join("static", "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "CTEJ OCR Backend is running. Please create static/index.html."}
