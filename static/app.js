@@ -321,6 +321,57 @@ document.getElementById("input-cardboard-file").addEventListener("change", async
   }
 });
 
+// Barcode Camera Scanner logic
+let html5QrCode = null;
+
+const startBarcodeScanner = () => {
+  const container = document.getElementById("barcode-scanner-container");
+  container.style.display = "block";
+  
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode("barcode-reader");
+  }
+  
+  const config = { fps: 10, qrbox: { width: 250, height: 100 } };
+  
+  html5QrCode.start(
+    { facingMode: "environment" }, 
+    config,
+    (decodedText, decodedResult) => {
+      // on success
+      stopBarcodeScanner();
+      const inputEl = document.getElementById("input-barcode-scanner");
+      inputEl.value = decodedText;
+      handleBarcodeScan();
+    },
+    (errorMessage) => {
+      // parse error, ignore
+    }
+  ).catch((err) => {
+    console.error("Camera start error", err);
+    alert("カメラの起動に失敗しました。権限を確認してください。");
+    container.style.display = "none";
+  });
+};
+
+const stopBarcodeScanner = () => {
+  const container = document.getElementById("barcode-scanner-container");
+  if (html5QrCode && html5QrCode.isScanning) {
+    html5QrCode.stop().then(() => {
+      container.style.display = "none";
+    }).catch(err => {
+      console.error("Stop failed", err);
+      container.style.display = "none";
+    });
+  } else {
+    container.style.display = "none";
+  }
+};
+
+document.getElementById("btn-close-barcode-scanner").addEventListener("click", () => {
+  stopBarcodeScanner();
+});
+
 // Barcode Scanning / Manual Entry Handler
 const handleBarcodeScan = async () => {
   const inputEl = document.getElementById("input-barcode-scanner");
@@ -378,6 +429,9 @@ document.getElementById("input-barcode-scanner").addEventListener("keydown", (e)
     e.preventDefault();
     handleBarcodeScan();
   }
+});
+document.getElementById("input-barcode-scanner").addEventListener("focus", () => {
+  startBarcodeScanner();
 });
 
 // Render scanned box cards

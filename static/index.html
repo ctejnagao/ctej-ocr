@@ -135,6 +135,12 @@
             <input type="number" id="input-barcode-qty" class="form-control" placeholder="数量" value="1" min="1" style="flex: 1; min-width: 0; max-width: 80px; padding: 12px 10px; text-align: center;">
             <button class="btn btn-outline" id="btn-add-barcode" style="width: auto; white-space: nowrap; padding: 12px 20px;">追加</button>
           </div>
+          
+          <!-- Barcode Camera Scanner Area -->
+          <div id="barcode-scanner-container" style="display: none; margin-top: 15px; width: 100%; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; overflow: hidden; background: #000; position: relative;">
+            <div id="barcode-reader" style="width: 100%;"></div>
+            <button class="btn btn-sm btn-outline" id="btn-close-barcode-scanner" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(0,0,0,0.6); color: white; border: none;">閉じる</button>
+          </div>
         </div>
       </div>
 
@@ -207,6 +213,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
